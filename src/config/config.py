@@ -1,5 +1,5 @@
+from dotenv import load_dotenv
+
 class Config:
-    def __init__(self, config):
-        self.config = config
-    def read_credentials(self):
-        pass
+    def read_credentials(self, dotenv_path=None):
+        load_dotenv(dotenv_path=dotenv_path)

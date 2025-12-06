@@ -1,17 +1,14 @@
-import pytest
-
-from unittest.mock import MagicMock
+import os
 
 from src.config.config import Config
 
-class TestConfig:
-    @pytest.fixture
-    def mock_config(self):
-        mock_config = MagicMock()
-        mock_config.LASTFN_KEY = 'fake_key'
-        return mock_config
-    
-    def test_read_credentials(self, mock_config):
+class TestConfig:    
+    def test_read_credentials(self, tmp_path, monkeypatch):
+        fake_env_file = tmp_path / ".env"
+        fake_env_file.write_text("FAKE_LASTFMKEY=fake_key")
+        monkeypatch.delenv("FAKE_LASTFMKEY", raising=False)
+        monkeypatch.chdir(tmp_path)
+
+        Config().read_credentials(dotenv_path=fake_env_file)
         
-        Config(mock_config).read_credentials()
-        assert mock_config.LASTFM_KEY == "fake_key"
+        assert os.environ["FAKE_LASTFMKEY"] == "fake_key"
