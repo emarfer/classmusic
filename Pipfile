@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pandas = "*"
+numpy = "*"
+requests = "*"
+pyarrow = "*"
+sqlalchemy = "*"
+mysqlclient = "*"
+pydantic = "*"
+python-dotenv = "*"
+
+[dev-packages]
+pytest = "*"
+ruff = "*"
+black = "*"
+
+[requires]
+python_version = "3.8"
