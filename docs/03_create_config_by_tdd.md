@@ -120,3 +120,50 @@ Con este cambio, el test pasó a **verde**. No dejamos lugar a la ambigüedad: l
 2.  **Los tests deben ser aislados**: `tmp_path` es fundamental para que los tests no interfieran entre sí ni con el entorno real.
 3.  **Controla el entorno del test**: `monkeypatch` nos da el poder de asegurar que las condiciones de la prueba son exactamente las que necesitamos.
 4.  **El código explícito es mejor que el implícito**: Pasar dependencias (como una ruta de fichero) directamente a una función la hace mucho más fácil de probar y entender que confiar en estados globales (como el directorio de trabajo actual).
+
+## 7. Refactorización Avanzada: De una Clase "Sin Estado" a una "Con Estado"
+
+El ciclo no terminó con el primer "verde". Notaste un "code smell" (un indicio de que algo podía mejorar): en el test, teníamos que instanciar la clase `Config` dos veces. Esto nos indicó que el diseño de la clase en sí era mejorable.
+
+**El problema**: La clase era "sin estado" (*stateless*). Actuaba como un simple intermediario para modificar y leer del estado global `os.environ`, pero la instancia en sí no contenía ninguna información.
+
+**La solución**: Hacer la clase "con estado" (*stateful*), de forma que el propio objeto cargue y contenga la configuración.
+
+Para ello, usamos `dotenv_values`, una función de la librería `python-dotenv` que lee un fichero `.env` y devuelve un diccionario, **sin modificar el entorno global `os.environ`**.
+
+**Código de Producción Refactorizado:**
+```python
+# En src/config/config.py
+from dotenv import dotenv_values
+
+class Config:
+    def __init__(self, dotenv_path):
+        # El constructor carga los valores y los guarda en la instancia
+        self.credentials = dotenv_values(dotenv_path)
+        
+    def get_credentials(self, key_name):
+        # El método ahora lee del diccionario interno
+        return self.credentials[key_name]
+```
+
+**Test Final Refactorizado:**
+El test se vuelve mucho más limpio y lógico. Ya no necesita `monkeypatch` porque no dependemos de estados globales.
+
+```python
+# En tests/config/test_config.py
+from src.config.config import Config
+
+class TestConfig:
+    def test_read_credentials(self, tmp_path):
+        # Arrange
+        fake_env_file = tmp_path / ".env"
+        fake_env_file.write_text("FAKE_LASTFMKEY=fake_key")
+        
+        # Act y Assert en una línea
+        # Creamos UNA instancia y sobre ELLA MISMA verificamos el método
+        assert Config(fake_env_file).get_credentials("FAKE_LASTFMKEY")  == "fake_key"
+```
+
+### Lecciones de la Refactorización Avanzada
+5.  **Escucha a tus tests**: Si un test resulta incómodo o ilógico (como instanciar dos veces un objeto), a menudo es una señal de que el diseño del código de producción puede mejorar.
+6.  **Prefiere la encapsulación al estado global**: El diseño final es mucho más robusto porque la configuración está contenida dentro del objeto `Config`. No "contamina" el entorno global (`os.environ`) y es más predecible.

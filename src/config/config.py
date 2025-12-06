@@ -1,5 +1,8 @@
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 class Config:
-    def read_credentials(self, dotenv_path=None):
-        load_dotenv(dotenv_path=dotenv_path)
+    def __init__(self, dotenv_path):
+        self.credentials = dotenv_values(dotenv_path)
+        
+    def get_credentials(self, key_name):
+        return self.credentials[key_name]
