@@ -63,6 +63,23 @@ Note: See 'pyenv help global' for tips on allowing both
     pipenv install pytest ruff black --dev
     ```
     (se han creado los archivso Pipefile + Pipefile.lock) 
-- Activar entorno:
+- Activar entorno: pipenv shell
+    - source /home/sinatxe/.local/share/virtualenvs/classmusic-wpCmMp9Z/bin/activate
+    - se han activado el entorno creado por pipenv + conda a la vez
+
+## Como crear el entorno en la ruta del proyecto:
+- desde la ruta raíz del proyecto, para eliminar el entorno virtual asociado a este proyecto: pipenv --rm
+- variable entorno: export PIPENV_VENV_IN_PROJECT=1
+    - necesaria incluira en ~/.bashrc 
+- volver a isntalar entrono, creando capreta .venv en el proyecto.
+    -- pipenv sync --dev
+- añadir, si no está, .venv/ al .gitignore
+- se ha creado .venv en el directorio del repo 
+- pipenv shell
+
+
+- comando para desactivar que conda active los entornos automáticamente:
+conda config --set auto_activate_base false
+
 
 
