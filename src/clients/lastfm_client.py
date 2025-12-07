@@ -17,4 +17,10 @@ class LastfmClient:
         params = self.params.copy()
         params.update({"method":method})
         params.update(kwargs)
-        return requests.get(self.uri, params)
+        
+        response = requests.get(self.uri, params)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise ValueError(f"status_code: {response.status_code}, message: {response.json()["message"]}")

@@ -185,3 +185,56 @@ def _make_request(self, method:str, **kwargs):
 5.  **Aserciones Específicas**: `assert_called_once_with()` es mucho más potente que `assert_called_once()` porque nos permite verificar que la interacción con el mock se hizo con los datos exactos que esperábamos.
 6.  **Peligros de los Objetos Mutables**: Descubrimos la importancia de usar `.copy()` con diccionarios o listas que son atributos de una clase para evitar que el estado de una llamada "se filtre" a la siguiente.
 7.  **Preparación de Tests Limpios (`setup_method`)**: Vimos cómo usar `setup_method` para reducir código repetido y hacer nuestros tests más legibles.
+
+---
+### Testeando el Comportamiento de la Respuesta (Éxito y Error)
+
+Una vez verificado que nuestro método `_make_request` *llama* correctamente a la API (o a su mock), el siguiente paso es testear cómo *reacciona* nuestro código al resultado de esa llamada. Aquí cubrimos dos caminos: el de éxito (la API devuelve un código 200) y el de error (la API devuelve cualquier otro código).
+
+#### 8. No Testear Librerías Externas (¡De Nuevo!)
+Inicialmente, intentamos un test que verificaba la URL completa que `requests` construiría. Rápidamente nos dimos cuenta de que esto era un error. La librería `requests` ya tiene sus propios tests que garantizan que construye las URLs correctamente. Nuestra responsabilidad no es volver a probar `requests`, sino **probar que nuestro código le pasa los argumentos correctos**. El test `test_make_requests_api_gets_called_with_correct_params` ya hace esto perfectamente, verificando la URI base y el diccionario de parámetros por separado.
+
+#### 9. Los Mocks Deben Configurare para Guiar al Código
+Un descubrimiento clave fue que, al añadir la lógica `if response.status_code == 200: ... else: raise ...`, los tests más antiguos empezaron a fallar. La razón es que no habíamos configurado el comportamiento del `mock_response`. 
+- Un `MagicMock` no configurado devuelve otro `MagicMock` por defecto. 
+- La comparación `MagicMock() == 200` siempre es `False`.
+- Esto hacía que nuestro código siempre entrara en la rama `else` y lanzara una excepción.
+
+**Lección**: A medida que el código de producción se vuelve más complejo, los tests deben configurar explícitamente los mocks (`mock_response.status_code = 200`) para guiar al código a través del camino que se quiere probar, incluso si el test solo se enfoca en la llamada inicial.
+
+#### 10. Testear Excepciones de Forma Limpia con `pytest.raises`
+Para verificar que nuestro código lanzaba un error cuando el `status_code` no era 200, la primera tentación fue usar un `try/except` o capturar la excepción y hacer un `assert` sobre su mensaje. Sin embargo, descubrimos una forma mucho más limpia y declarativa que ofrece `pytest`.
+
+**La Herramienta Correcta**: `pytest.raises` con el parámetro `match`.
+
+```python
+# En tests/clients/test_lastfm_client.py
+def tests_make_request_raises_error_if_status_code_is_not_200(self, ...):
+    ...
+    expected_message = f"status_code: {status_code}, message: {message}" 
+    
+    with pytest.raises(ValueError, match=expected_message):
+        self.client._make_request("")
+```
+
+- **`pytest.raises(ValueError, ...)`**: Le indica a `pytest` que esperamos que se lance una excepción de tipo `ValueError`. Si no se lanza (o se lanza otra), el test falla.
+- **`match=expected_message`**: Este es el verdadero truco. `pytest` comprueba automáticamente que el mensaje de la excepción contenga el texto que le pasamos. Esto elimina la necesidad de capturar la excepción en una variable (`as exc_info`) y hacer un `assert` manual, haciendo el test mucho más legible.
+
+#### 11. Potenciar los Tests con `@pytest.mark.parametrize`
+Para asegurarnos de que el manejo de errores funcionaba para diferentes códigos de estado (404, 501, etc.), en lugar de escribir un test para cada uno, usamos el decorador `@pytest.mark.parametrize`. Esto nos permitió ejecutar la misma lógica de test con un conjunto diferente de datos de entrada (`status_code` y `message`), haciendo nuestra suite de tests más robusta y eficiente.
+
+```python
+# En tests/clients/test_lastfm_client.py
+@pytest.mark.parametrize(
+    "status_code, message",
+    [
+        (201, "message201"),
+        (404, "message404 "),
+        (501, "message501")
+    ]
+)
+def tests_make_request_raises_error_if_status_code_is_not_200(...):
+    # El código del test se ejecuta una vez por cada tupla de la lista
+    ...
+```
+Esta técnica es fundamental para escribir tests escalables y no repetitivos.
