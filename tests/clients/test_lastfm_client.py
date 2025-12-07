@@ -1,31 +1,38 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
 
 from src.clients.lastfm_client import LastfmClient
 from src.config.config import Config
 
 
-class TestLastfmClient():
-    @pytest.fixture
-    def mock_config(self):
+class TestLastfmClient():    
+    def setup_method(self, method):
         mock_config = MagicMock(spec=Config)
-        def side_effect_credentials(key_name):            
-            keys_dict = {
-                "LASTFM_KEY":"fake_lastfam_key",
-                "LASTFM_SECRET":"fake_lastfm_secret"}
-            return keys_dict[key_name]
-        mock_config.get_credentials.side_effect = side_effect_credentials
-        return mock_config
+        mock_config.get_credentials.return_value = "fake_lastfam_key"
+        self.client = LastfmClient(mock_config)        
     
-    def test_lastfm_client_gets_credentials(self, mock_config):        
-        client = LastfmClient(mock_config)
+    def test_lastfm_client_gets_credentials(self):                
+        assert self.client.LASTFM_KEY == "fake_lastfam_key"
         
-        assert client.LASTFM_KEY == "fake_lastfam_key"
-        assert client.LASTFM_SECRET == "fake_lastfm_secret"
+    def test_lastfm_client_has_uri(self):        
+        assert self.client.uri == "http://ws.audioscrobbler.com/2.0/"
         
-    def test_lastfm_client_has_uri(self, mock_config):
-        client = LastfmClient(mock_config)
+    
+    @patch("src.clients.lastfm_client.requests.get")
+    def test_make_requests_api_gets_called(self,mock_requests_get):            
+        self.client._make_request("")
         
-        assert client.uri == "http://ws.audioscrobbler.com/2.0/"
-
+        mock_requests_get.assert_called_once()
+    
+    @patch("src.clients.lastfm_client.requests.get")
+    def test_make_requests_api_gets_called_with_correct_params(self, mock_requests_get):
+        expected_params = {
+            "user":"sinatxester",
+            "api_key":"fake_lastfam_key",
+            "format":"json",            
+            "method":"test_method",
+            "limit":0}
+        self.client._make_request("test_method", limit=0)
+        
+        mock_requests_get.assert_called_once_with(self.client.uri, expected_params)
         

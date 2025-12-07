@@ -117,3 +117,71 @@ class TestLastfmClient():
 1.  **Mocking Avanzado (`side_effect`):** Aprendimos a usar `side_effect` con una función para simular comportamientos de mock más complejos, donde el valor de retorno depende de los argumentos de entrada. Esto es crucial para testear interacciones con dependencias que tienen lógica condicional.
 2.  **Testeo Completo del Constructor:** Aseguramos que el constructor de `LastfmClient` no solo se inicializa, sino que lo hace con los datos correctos provenientes de su dependencia `Config`.
 3.  **Claridad en las Asertos:** Preferir aserciones que comprueben valores exactos en lugar de solo su existencia (ej. `assert client.uri == "..."` vs `assert client.uri is not None`).
+
+---
+## Testeando el Método `_make_request`
+
+Una vez probado el constructor, el siguiente paso es probar los métodos de la clase. Empezamos por el método privado `_make_request`, que será el corazón de todas las llamadas a la API.
+
+### 1. Simplificaciones y Preparación (`setup_method`)
+
+Primero, decidimos simplificar el alcance: como solo vamos a ingestar datos de un usuario, el nombre de usuario puede estar fijo en el cliente, y la `LASTFM_SECRET` no es necesaria para las llamadas de solo lectura.
+
+Para evitar repetir la creación del `LastfmClient` en cada test, usamos `setup_method`, una función de `pytest` que se ejecuta antes de cada test dentro de una clase:
+
+```python
+# En tests/clients/test_lastfm_client.py
+class TestLastfmClient():    
+    def setup_method(self, method):
+        # Creamos un mock simple para Config, ya que solo necesitamos una clave
+        mock_config = MagicMock(spec=Config)
+        mock_config.get_credentials.return_value = "fake_lastfam_key"
+        # Creamos la instancia del cliente y la guardamos en self para que esté disponible en los tests
+        self.client = LastfmClient(mock_config)
+```
+
+### 2. Test 1: Verificar que se Llama a `requests.get`
+
+Nuestro primer objetivo fue asegurar que `_make_request` efectivamente intentaba hacer una llamada de red, pero sin hacerla de verdad.
+
+*   **Herramienta:** Usamos `@patch` de `unittest.mock` como un decorador para reemplazar `requests.get` por un `MagicMock`.
+*   **Test (Rojo -> Verde):**
+    1.  **Test**: Creamos `test_make_requests_api_gets_called` y usamos `mock_requests_get.assert_called_once()` para verificar que el mock fue llamado.
+    2.  **Fallo Inicial (Rojo)**: El test fallaba porque `_make_request` estaba vacío.
+    3.  **Implementación (Verde)**: Añadimos la implementación mínima en `_make_request` para que llamara a `requests.get`.
+
+### 3. Test 2: Refactorizar para Aceptar Argumentos Dinámicos
+
+El siguiente paso fue hacer `_make_request` más útil, capaz de construir la URL con parámetros.
+
+*   **Test (Rojo -> Verde):**
+    1.  **Test**: Creamos `test_make_requests_api_gets_called_with_correct_params`. Este test llama a `_make_request` con un método y parámetros opcionales (`_make_request("test_method", limit=0)`). La aserción clave es `mock_requests_get.assert_called_once_with(url, expected_params)`, que comprueba no solo *si* se llamó, sino *con qué argumentos exactos*.
+    2.  **Fallo Inicial (Rojo)**: El test fallaba porque `_make_request` no aceptaba los nuevos argumentos (`method`, `**kwargs`).
+    3.  **Implementación (Verde)**: Refactorizamos `_make_request` para que aceptara `method` y `**kwargs`, construyera el diccionario de parámetros y llamara a `requests.get`.
+
+### 4. El Bug Sutil: Referencia vs. Copia
+
+Durante la refactorización, nos encontramos con un bug común pero importante. El código `params = self.params` creaba una **referencia**, no una copia, por lo que cada llamada a `_make_request` modificaba el diccionario base de la clase.
+
+*   **La Solución:** Cambiamos la línea a `params = self.params.copy()` para asegurar que cada llamada trabaje con su propio diccionario de parámetros, aislando las llamadas entre sí.
+
+**Código Final del Método `_make_request`:**
+```python
+# En src/clients/lastfm_client.py
+def _make_request(self, method:str, **kwargs):
+    # Creamos una copia para no modificar el diccionario base de la instancia
+    params = self.params.copy()
+    # Añadimos el método de la API
+    params.update({"method":method})
+    # Añadimos cualquier parámetro opcional
+    params.update(kwargs)
+    # Hacemos la llamada
+    return requests.get(self.uri, params)
+```
+
+### Más Lecciones Aprendidas
+
+4.  **Mocking de Librerías Externas (`@patch`)**: Aprendimos a usar `@patch` para aislar nuestro código de dependencias externas como `requests`, haciendo los tests rápidos y fiables.
+5.  **Aserciones Específicas**: `assert_called_once_with()` es mucho más potente que `assert_called_once()` porque nos permite verificar que la interacción con el mock se hizo con los datos exactos que esperábamos.
+6.  **Peligros de los Objetos Mutables**: Descubrimos la importancia de usar `.copy()` con diccionarios o listas que son atributos de una clase para evitar que el estado de una llamada "se filtre" a la siguiente.
+7.  **Preparación de Tests Limpios (`setup_method`)**: Vimos cómo usar `setup_method` para reducir código repetido y hacer nuestros tests más legibles.
