@@ -12,11 +12,13 @@ sqlalchemy = "*"
 mysqlclient = "*"
 pydantic = "*"
 python-dotenv = "*"
+assertpy = "*"
 
 [dev-packages]
 pytest = "*"
 ruff = "*"
 black = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.12"
