@@ -119,3 +119,55 @@ Este es el paso más complejo y el que dará la funcionalidad completa.
   - Hará un bucle desde la página 2 hasta la última página, llamando a `_make_request` en cada iteración con el parámetro `page` correspondiente.
   - Acumulará los resultados de la lista `["track"]` de cada página en una única lista final.
   - Devolverá la lista completa.
+
+---
+
+## 3. Implementación Incremental de Funcionalidades (Actualización)
+
+Las funcionalidades originalmente descritas en la sección "3. Próximos Pasos (Hoja de Ruta)" han sido implementadas y probadas. A continuación, se detalla el trabajo realizado y los casos de borde manejados.
+
+### Paso 3.1: Gestionar la Paginación (Hoja de Ruta: Pasos 3.1 y 3.3 Completados)
+
+La primera gran funcionalidad implementada fue asegurar que el cliente pudiera obtener **todos** los scrobbles, no solo los de la primera página.
+
+- **Tests**:
+  - Se crearon tests para ambos escenarios: una respuesta con una sola página (`test_get_recenttracks_returns_list_of_tracks_when_totalpages_is_one`) y una con múltiples páginas (`test_get_recenttracks_returnslist_of_tracks_when_totalpages_is_more_than_one`).
+  - Para simular las respuestas de la API, se crearon ficheros JSON de prueba (`test_rt_1page.json`, `test_rt_2_pages_1.json`, etc.), con la estructura adecuada para simular las respuestas de la API.
+  - El mock de `_make_request` se configuró con `side_effect` para simular las llamadas secuenciales a las diferentes páginas.
+- **Implementación**:
+  - `get_recenttracks` se modificó para leer primero el metadato `totalPages` de la respuesta.
+  - Se implementó un bucle que itera desde la página 1 hasta `totalPages`, llamando a `_make_request` con el parámetro `page` en cada iteración.
+  - Los resultados (`["recenttracks"]["track"]`) de cada página se acumulan en una lista única que se devuelve al final.
+
+### Paso 3.2: Manejo de Casos Borde (Nuevas Funcionalidades)
+
+Durante el desarrollo, se identificaron y manejaron dos casos borde importantes que no estaban explícitamente detallados en el plan inicial.
+
+#### Caso 1: No hay scrobbles nuevos
+
+- **Test**: Se creó `test_total_pages_attribute_is_zero_raises_error` para el caso en que la API devuelve `totalPages: "0"`.
+- **Implementación**: Se añadió una comprobación al inicio de `get_recenttracks` que lanza un `ValueError` si `totalPages` es "0", evitando trabajo innecesario y comunicando el estado claramente.
+
+#### Caso 2: Canción en reproducción ("Now Playing")
+
+Se descubrió que si una canción se está reproduciendo, aparece como el primer elemento en la lista de `track` con un metadato `{"@attr": {"nowplaying": "true"}}`. Este scrobble no está finalizado y, por lo tanto, no debe ser ingestado.
+
+- **Proceso TDD**:
+  1.  **Descomposición**: El problema se dividió en dos métodos privados: `_check_first_element_tracks_list` para identificar el track "now playing" y `_drop_first_element_if_attr_in_keys` para eliminarlo de la lista.
+  2.  **Tests Unitarios y de Interacción**: Se crearon tests para verificar cada método por separado (`test_check_first_element_list`, `test_drops_first_element_if_attr_in_keys`) y para asegurar que se llamaban correctamente entre sí (`test_drops_first_element_if_attr_in_keys_calls_check_first_element_list`).
+  3.  **Test de Integración**: Finalmente, se añadieron tests a nivel de `get_recenttracks` (`test_get_recenttracks_calls_drops_first_element...` y `test_get_recenttracks_drops_first_element_if_in_list_when_it_has_attr_in_keys`) para garantizar que la lógica completa funcionaba como un todo, incluyendo la correcta configuración de los mocks.
+
+---
+
+## 4. Siguiente Paso
+
+Con la funcionalidad principal de paginación y el manejo de casos borde ya implementados y probados, el siguiente objetivo es añadir la capacidad de filtrar los resultados por fecha, tal como se describía originalmente en el "Paso 3.2" de la hoja de ruta.
+
+### Implementar el parámetro `from`
+
+- **Test:**
+  - Llamar a `get_recenttracks(from_date=MI_TIMESTAMP)`.
+  - Hacer un `assert` de que `_make_request` es llamado no solo con el `method` correcto, sino también con un `kwarg` que contenga el parámetro `from` y su valor en formato timestamp.
+- **Implementación:**
+  - Modificar la firma de `get_recenttracks` para que acepte un argumento opcional `from_date`.
+  - Si `from_date` se proporciona, pasarlo como un `kwarg` a `_make_request`.

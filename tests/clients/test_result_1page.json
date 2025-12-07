@@ -1,0 +1,83 @@
+{
+    "track": [
+        {
+            "artist": {
+                "mbid": "9bacf78f-9132-43da-8873-8a9eb49da0e9",
+                "#text": "Alejandro Sanz"
+            },
+            "streamable": "0",
+            "image": [
+                {
+                    "size": "small",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/34s/974c89a6b54444b1b0978cab3ddf283d.jpg"
+                },
+                {
+                    "size": "medium",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/64s/974c89a6b54444b1b0978cab3ddf283d.jpg"
+                },
+                {
+                    "size": "large",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/174s/974c89a6b54444b1b0978cab3ddf283d.jpg"
+                },
+                {
+                    "size": "extralarge",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/974c89a6b54444b1b0978cab3ddf283d.jpg"
+                }
+            ],
+            "mbid": "be6644e6-2a6d-31a7-b458-4e66ec274489",
+            "album": {
+                "mbid": "55b3afe2-c079-42e4-84d5-4a7e5bd4d8bb",
+                "#text": "3"
+            },
+            "name": "Por Bandera",
+            "url": "https://www.last.fm/music/Alejandro+Sanz/_/Por+Bandera",
+            "date": {
+                "uts": "1763133775",
+                "#text": "14 Nov 2025, 15:22"
+            }
+        },
+        {
+            "artist": {
+                "mbid": "35aaf2e1-50fa-4bb6-9e12-1b8bbdeca266",
+                "#text": "Burning Witches"
+            },
+            "streamable": "0",
+            "image": [
+                {
+                    "size": "small",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/34s/96986ec3d7419adb61cdc399a50a1262.jpg"
+                },
+                {
+                    "size": "medium",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/64s/96986ec3d7419adb61cdc399a50a1262.jpg"
+                },
+                {
+                    "size": "large",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/174s/96986ec3d7419adb61cdc399a50a1262.jpg"
+                },
+                {
+                    "size": "extralarge",
+                    "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/96986ec3d7419adb61cdc399a50a1262.jpg"
+                }
+            ],
+            "mbid": "",
+            "album": {
+                "mbid": "c09c36f3-11e5-4914-b21a-bd31e0ddb6c1",
+                "#text": "Inquisition"
+            },
+            "name": "Malus Maga",
+            "url": "https://www.last.fm/music/Burning+Witches/_/Malus+Maga",
+            "date": {
+                "uts": "1762972384",
+                "#text": "12 Nov 2025, 18:33"
+            }
+        }
+    ],
+    "@attr": {
+        "user": "sinatxester",
+        "totalPages": "1",
+        "page": "1",
+        "perPage": "50",
+        "total": "2"
+    }
+}
