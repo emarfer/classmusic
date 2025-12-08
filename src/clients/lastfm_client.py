@@ -15,6 +15,10 @@ class LastfmClient:
             "format": "json",
         }
 
+    def run(self):
+        lista = self.get_recenttracks()
+        print(lista)
+
     def _make_request(self, method: str, **kwargs):
         params = self.params.copy()
         params.update({"method": method})
