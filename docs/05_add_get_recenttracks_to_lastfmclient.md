@@ -112,7 +112,7 @@ Este es el paso más complejo y el que dará la funcionalidad completa.
   - La primera vez que se llame, devolverá la página 1 y `"totalPages": "2"`.
   - La segunda vez, devolverá la página 2 y `"totalPages": "2"`.
   - Hacer un `assert` de que `_make_request` fue llamado **dos veces**, la segunda vez con el parámetro `page=2`.
-  - Hacer un `assert` de que la lista final devuelta por `get_recenttracks` contiene las canciones de **ambas páginas**.
+  - Hacer un `assert` de que la lista final devuelta por `get_recenttracks` contiene las canciones de **ambas páginas`.
 - **Implementación:**
   - `get_recenttracks` llamará a `_make_request` una primera vez.
   - Extraerá el total de páginas de los metadatos `["@attr"]["totalPages"]`.
@@ -171,3 +171,26 @@ Con la funcionalidad principal de paginación y el manejo de casos borde ya impl
 - **Implementación:**
   - Modificar la firma de `get_recenttracks` para que acepte un argumento opcional `from_date`.
   - Si `from_date` se proporciona, pasarlo como un `kwarg` a `_make_request`.
+
+---
+
+## 5. Implementación de Parámetros Adicionales: `limit`, `to` y `extended`
+
+Después de finalizar la gestión de paginación y los casos borde básicos, se procedió a enriquecer la funcionalidad de `get_recenttracks` incorporando parámetros adicionales de la API de Last.fm, con el objetivo de hacer el cliente más flexible y eficiente.
+
+### Parámetro `extended`
+
+- **Objetivo**: Obtener información más detallada de cada "track" en la respuesta de la API.
+- **Implementación**: Se añadió la clave `'extended': '1'` directamente al diccionario `self.params` en el método `__init__` de `LastfmClient`. Esto asegura que todas las llamadas a la API de "recent tracks" incluyan este parámetro por defecto.
+- **Tests**: Los tests que validan los parámetros de la petición (`test_make_requests_api_gets_called_with_correct_params` y `test_make_request_acept_new_parameters`) fueron actualizados para esperar la presencia de este nuevo parámetro.
+
+### Parámetros `limit` y `to` (o `to_uts`)
+
+- **Objetivo**: Permitir controlar el número de tracks por página (`limit`) y especificar una fecha de fin (timestamp UTS) para la búsqueda de tracks (`to_uts`), complementando la funcionalidad de `from_uts`.
+- **Implementación**:
+    - Se modificó la firma del método `get_recenttracks` para aceptar `limit` (con un valor por defecto de 200) y `to_uts` (con valor por defecto `None`), además de `from_uts`.
+    - En las llamadas internas a `_make_request`, el parámetro `limit` se pasó directamente.
+    - Para los parámetros `from_uts` y `to_uts`, se utilizó el desempaquetado de diccionario (`**{"from": from_uts, "to": to_uts}`) para manejar las claves que son palabras reservadas en Python, asegurando que se transmitieran correctamente a la API. Esta lógica se aplicó tanto en la llamada inicial para obtener `totalPages` como en el bucle de paginación.
+- **Tests**:
+    - El test `test_get_recenttracks_calls_make_request_with_valid_params` fue actualizado para verificar que `get_recenttracks` llama a `_make_request` con los valores por defecto de `limit`, `from_uts` y `to_uts`.
+    - Los tests `test_make_request_acept_new_parameters` y `test_make_requests_works_in_get_recenttracks_with_new_parameters` fueron actualizados (y renombrados para mayor claridad) para validar que todos los nuevos parámetros (`limit`, `from_uts`, `to_uts`) se pasan y manejan correctamente a lo largo de la cadena de llamadas (`get_recenttracks` -> `_make_request` -> `requests.get`).
