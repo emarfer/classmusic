@@ -13,6 +13,7 @@ class LastfmClient:
             "user": "sinatxester",
             "api_key": self.LASTFM_KEY,
             "format": "json",
+            "extended": "1",
         }
 
     def run(self):
@@ -33,10 +34,10 @@ class LastfmClient:
                 f"status_code: {response.status_code}, message: {response.json()["message"]}"
             )
 
-    def get_recenttracks(self):
-        total_pages_attribute = self._make_request("user.getrecenttracks")[
-            "recenttracks"
-        ]["@attr"]["totalPages"]
+    def get_recenttracks(self, limit=200, from_uts=None, to_uts=None):
+        total_pages_attribute = self._make_request(
+            "user.getrecenttracks", limit=limit, **{"from": from_uts, "to": to_uts}
+        )["recenttracks"]["@attr"]["totalPages"]
         if total_pages_attribute == "0":
             raise ValueError("No new scrobbles to add")
         else:
@@ -44,7 +45,10 @@ class LastfmClient:
             tracks_list = []
             for i in total_pages_list:
                 tracks_list_request = self._make_request(
-                    "user.getrecenttracks", page=i
+                    "user.getrecenttracks",
+                    page=i,
+                    limit=limit,
+                    **{"from": from_uts, "to": to_uts},
                 )["recenttracks"]["track"]
                 tracks_list_request = self._drop_first_element_if_attr_in_keys(
                     tracks_list_request

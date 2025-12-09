@@ -33,10 +33,12 @@ class TestLastfmClient:
     @patch("src.clients.lastfm_client.requests.get")
     def test_make_requests_api_gets_called_with_correct_params(self, mock_requests_get):
         mock_requests_get.return_value = self.mock_response
+
         expected_params = {
             "user": "sinatxester",
             "api_key": "fake_lastfam_key",
             "format": "json",
+            "extended": "1",
             "method": "test_method",
             "limit": 0,
         }
@@ -90,14 +92,16 @@ class TestLastfmClient:
             mock_make_request.assert_called_once_with(method)
 
     @patch("src.clients.lastfm_client.LastfmClient._make_request")
-    def test_get_recenttracks_calls_make_request_with_valid_method(
+    def test_get_recenttracks_calls_make_request_with_valid_params(
         self, mock_make_request
     ):
         method = "user.getrecenttracks"
 
         self.client.get_recenttracks()
 
-        mock_make_request.assert_any_call(method)
+        mock_make_request.assert_any_call(
+            method, limit=200, **{"from": None, "to": None}
+        )
 
     @patch("src.clients.lastfm_client.LastfmClient._make_request")
     def test_get_recenttracks_returns_list_of_tracks_when_totalpages_is_one(
@@ -216,6 +220,41 @@ class TestLastfmClient:
         result = self.client.get_recenttracks()
 
         assert result == expected
+
+    @patch("src.clients.lastfm_client.requests.get")
+    def test_make_request_acept_new_parameters(self, mock_requests_get):
+        mock_requests_get.return_value = self.mock_response
+        fake_method = "fake_method"
+        list_limit = 200
+        fake_from_uts = "1234567890"
+        fake_to_uts = "1111111111"
+        expected_params = self.client.params.copy() | {
+            "method": fake_method,
+            "limit": list_limit,
+            "from": fake_from_uts,
+            "to": fake_to_uts,
+        }
+
+        self.client._make_request(
+            fake_method,
+            limit=list_limit,
+            **{"from": fake_from_uts, "to": fake_to_uts},
+        )
+        mock_requests_get.assert_called_once_with(self.client.uri, expected_params)
+
+    @patch("src.clients.lastfm_client.LastfmClient._make_request")
+    def test_make_requests_works_in_get_recenttracks_with_new_parameters(
+        self, mock_make_request
+    ):
+        self.client.get_recenttracks(
+            limit="200", from_uts="123456789", to_uts="1111111111"
+        )
+
+        mock_make_request.assert_any_call(
+            "user.getrecenttracks",
+            limit="200",
+            **{"from": "123456789", "to": "1111111111"},
+        )
 
     def read_json_test(self, path):
         with open(path, "r", encoding="utf-8") as f:
