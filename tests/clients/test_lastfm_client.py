@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock, patch
-from assertpy import assert_that
 import pytest
 
 import json
