@@ -92,3 +92,21 @@ El paso más complejo es obtener el `id_can` para cada scrobble. La estrategia d
 Este enfoque de "búsqueda masiva" es crucial para evitar el problema de rendimiento "N+1" (hacer una consulta a la base de datos por cada fila).
 
 **Conclusión**: Con estos pasos, `EnrichScrobble` está casi listo. La tarea inmediata es ir a `MysqlManager` y crear el método `get_id_can_map` con sus correspondientes tests.
+
+---
+## 6. La Decisión Final: Centralizar la Lógica de Búsqueda
+
+Antes de implementar `get_id_can_map`, surgió una última duda de diseño: ¿realmente este método tan específico debía estar en una clase genérica como `MysqlManager`? ¿O tenía más sentido un ejecutor de consultas genérico que leyera ficheros `.sql`?
+
+### El "Corner Case" Decisivo: ¿Qué Pasa Si Falla la Búsqueda?
+
+Consideramos un caso real: Last.fm a veces altera ligeramente los metadatos de un tema (ej. "tema1" se convierte en "tema uno"). Esto provocaría que nuestro `lookup` del `id_can` falle para esos temas, ya que el string `completo` no coincidiría.
+
+La pregunta clave fue: **¿Qué arquitectura maneja mejor estos fallos?**
+
+**Decisión**: El **método específico** (`get_id_can_map`) es superior para manejar errores.
+*   **Razón**: Un método específico tiene un "contrato" claro. Sabe que debe encontrar un `id_can` para cada `completo` que se le pasa. Por tanto, puede (y debe) ser responsable de comprobar si el número de resultados de la base de datos coincide con el número de `completo`s que se le pidieron. Si no coinciden, puede lanzar un error específico y muy informativo (`IdCanNotFoundError: No se encontraron los IDs para [...]`), alertando al `Enricher` de que algo ha ido mal.
+
+Con un método genérico, la responsabilidad de validar que se han encontrado todos los IDs recaería en el llamador (el `Enricher`), lo que complica su lógica y abre la puerta a duplicar este código de validación en otros lugares en el futuro.
+
+**Conclusión Final**: El "corner case" de los fallos en la búsqueda fue el argumento definitivo para elegir el **enfoque del método específico**. Centraliza la lógica de acceso a datos Y la validación de esa lógica en un único lugar (`MysqlManager`), creando una "API de base de datos" interna más robusta y fiable.
