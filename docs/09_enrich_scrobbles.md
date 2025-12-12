@@ -48,3 +48,47 @@ El flujo de nuestro orquestador `ingest_scrobble.py` queda así:
 4.  **Load**: `MysqlManager.save_scrobbles` recibirá los datos ya enriquecidos y completos para realizar la inserción masiva.
 
 Este enfoque "Enriquecer y Luego Cargar" es más robusto, eficiente y asegura la integridad de los datos desde el primer momento, evitando las complejas operaciones de `UPDATE` y borrado a posteriori.
+
+---
+## 5. Implementación de la Clase `EnrichScrobble`
+
+Con el plan claro, procedimos a crear el componente "Enricher".
+
+### 5.1. Formato de Salida: ¿Lista de Diccionarios o DataFrame?
+
+La primera decisión para el `Enricher` fue definir el formato de sus datos de salida. Dado que el `MysqlManager` usaría la carga masiva, ¿qué formato era mejor para él?
+
+**Decisión**: El `Enricher` devolverá un **DataFrame de Pandas**.
+*   **Razón**: SQLAlchemy tiene una integración excelente con Pandas a través del método `DataFrame.to_sql()`. Es una forma muy conveniente y legible de realizar inserciones masivas, y se alinea con las prácticas comunes en flujos de trabajo de datos.
+
+### 5.2. Primeros Pasos con TDD: `fechahora` y Vectorización
+
+Empezamos el desarrollo de `EnrichScrobble` con TDD, centrándonos primero en la tarea más sencilla: añadir la columna `fechahora`.
+
+**Decisión**: Usar operaciones **vectorizadas** de Pandas.
+*   **Razón**: En lugar de usar un bucle o el método `.apply()`, la función vectorizada `pd.to_datetime(df['uts'], unit='s')` es mucho más rápida y eficiente, ya que opera sobre toda la columna de una vez. Esto representa una mejora significativa de rendimiento.
+
+### 5.3. Añadiendo Lógica de Negocio: Álbumes Desconocidos
+
+Identificamos una regla de negocio del antiguo proyecto: si un álbum era un string vacío (`""`), debía transformarse en `"[Desconocido]"`.
+
+**Decisión**: Esta lógica pertenece al `Enricher`.
+*   **Razón**: Es una regla de transformación de datos, no una responsabilidad de la base de datos. Se implementó con `df.loc[...]`, una forma idiomática de pandas para realizar asignaciones condicionales. El `MysqlManager` recibirá los datos ya limpios.
+
+### 5.4. Próximo Paso: Búsqueda de `id_can`
+
+El paso más complejo es obtener el `id_can` para cada scrobble. La estrategia definida es:
+
+1.  **En `EnrichScrobble`**:
+    *   Crear una columna `completo` en el DataFrame, concatenando `artist`, `album` y `title`.
+    *   Obtener una lista de todos los valores `completo` únicos.
+2.  **En `MysqlManager`**:
+    *   Crear un nuevo método, `get_id_can_map(completos: list)`, que recibirá la lista de strings `completo`.
+    *   Este método ejecutará **una única consulta `SELECT`** a la base de datos (`SELECT completo, id_can FROM total WHERE completo IN (...)`) para obtener todos los IDs de una vez.
+    *   Devolverá un diccionario que mapea cada string `completo` a su `id_can`.
+3.  **De vuelta en `EnrichScrobble`**:
+    *   Usar este diccionario para popular la columna `id_can` en el DataFrame, probablemente con el método `.map()` de pandas.
+
+Este enfoque de "búsqueda masiva" es crucial para evitar el problema de rendimiento "N+1" (hacer una consulta a la base de datos por cada fila).
+
+**Conclusión**: Con estos pasos, `EnrichScrobble` está casi listo. La tarea inmediata es ir a `MysqlManager` y crear el método `get_id_can_map` con sus correspondientes tests.
